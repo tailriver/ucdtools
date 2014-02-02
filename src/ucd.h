@@ -19,7 +19,7 @@ typedef struct {
     int num_ndata;
     int num_cdata;
     int num_nlist; /* binary only */
-    FILE* fp;
+    FILE* _fp;
     int _nc;
 } ucd_context;
 
@@ -54,36 +54,37 @@ typedef struct {
     ucd_data* cdata;
 } ucd_content;
 
-int ucd_reader_simple(ucd_content* ucd, const char* filename, int* was_binary);
-int ucd_writer_simple(const ucd_content* ucd, const char* filename, int is_binary);
+int ucd_simple_reader(ucd_content* ucd, const char* filename, int* was_binary);
+int ucd_simple_writer(const ucd_content* ucd, const char* filename, int is_binary);
+void ucd_simple_free(ucd_content* ucd);
 
-int ucd_reader_open(ucd_context* ucd, const char* filename);
-int ucd_read_nodes_and_cells(ucd_context* ucd,
+int ucd_reader_open(ucd_context* c, const char* filename);
+int ucd_read_nodes_and_cells(ucd_context* c,
         int* nodes, float* x, float* y, float* z,
         int* cells, int* nlist, int ld_nlist);
-int ucd_read_data_header(ucd_context* ucd,
+int ucd_read_data_header(ucd_context* c,
         int* num_comp, int* components, char* labels, char* units);
-int ucd_read_data_minmax(ucd_context* ucd, float* minima, float* maxima);
-int ucd_read_data_ascii(ucd_context* ucd, int* ids, float* data);
-int ucd_read_data_binary(ucd_context* ucd, int component_size, float* data);
+int ucd_read_data_minmax(ucd_context* c, float* minima, float* maxima);
+int ucd_read_data_ascii(ucd_context* c, int* ids, float* data);
+int ucd_read_data_binary(ucd_context* c, int component_size, float* data);
 int ucd_read_data_active_list(ucd_context* ucd, int* active_list);
 
-int ucd_writer_open(ucd_context* ucd, const char* filename);
-int ucd_write_nodes_and_cells(ucd_context* ucd,
+int ucd_writer_open(ucd_context* c, const char* filename);
+int ucd_write_nodes_and_cells(ucd_context* c,
         const int* nodes, const float* x, const float* y, const float* z,
         const int* cells, const int* nlist, int ld_nlist);
-int ucd_write_data_header(ucd_context* ucd,
+int ucd_write_data_header(ucd_context* c,
         int num_comp, const int* components, const char* labels, const char* units);
-int ucd_write_data_minmax(ucd_context* ucd, const float* minima, const float* maxima);
-int ucd_write_data_ascii_1(ucd_context* ucd, int id, const float* data);
-int ucd_write_data_ascii_n(ucd_context* ucd, const int* ids, const float* data);
+int ucd_write_data_minmax(ucd_context* c, const float* minima, const float* maxima);
+int ucd_write_data_ascii_1(ucd_context* c, int id, const float* data);
+int ucd_write_data_ascii_n(ucd_context* c, const int* ids, const float* data);
 int ucd_write_data_binary(ucd_context* ucd,
         int component_size, const float* data, int need_transpose);
-int ucd_write_data_active_list(ucd_context* ucd, const int* active_list);
+int ucd_write_data_active_list(ucd_context* c, const int* active_list);
 
 int ucd_cell_nlist_size(int cell_type);
 const char* ucd_cell_type_string(int num);
 int ucd_cell_type_number(const char* str);
-int ucd_binary_filesize(ucd_context* ucd);
+int ucd_binary_filesize(ucd_context* c);
 
-int ucd_close(ucd_context* ucd);
+int ucd_close(ucd_context* c);

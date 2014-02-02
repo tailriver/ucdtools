@@ -26,7 +26,7 @@ int main(int argc, char** argv) {
     output_file = argv[argc-1];
 
     /* header */
-    has_error = ucd_reader_simple(&ucd, input_file, &is_binary_input);
+    has_error = ucd_simple_reader(&ucd, input_file, &is_binary_input);
     if (has_error) {
         return has_error;
     }
@@ -67,17 +67,20 @@ int main(int argc, char** argv) {
             fprintf(stderr, "input file is binary format.\n");
             return EXIT_FAILURE;
         } else {
-            has_error = ucd_writer_simple(&ucd, output_file, 0);
+            has_error = ucd_simple_writer(&ucd, output_file, 0);
             /* return ucd_write_ascii(&ucd_, stdout); */
         }
     } else {
         if (keep_format) {
-            has_error = ucd_writer_simple(&ucd, output_file, 0);
+            has_error = ucd_simple_writer(&ucd, output_file, 0);
             /* return ucd_write_ascii(&ucd_, stdout); */
         } else {
-            has_error = ucd_writer_simple(&ucd, output_file, 1);
+            has_error = ucd_simple_writer(&ucd, output_file, 1);
             /* return ucd_write_binary(&ucd_, stdout); */
         }
     }
+
+    ucd_simple_free(&ucd);
+
     return has_error;
 }

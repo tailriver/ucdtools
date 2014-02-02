@@ -85,36 +85,67 @@ int ucd_cell_type_number(const char* str)
 }
 
 
-int ucd_binary_filesize(ucd_context* ucd)
+int ucd_binary_filesize(ucd_context* c)
 {
     int size;
 
     size = sizeof(char) + 6 * sizeof(int); /* header */
-    size += 4 * ucd->num_cells * sizeof(int); /* cell information */
-    size += ucd->num_nlist * sizeof(int); /* node list of cells */
-    size += 3 * ucd->num_nodes * sizeof(float); /* node coordinates */
+    size += 4 * c->num_cells * sizeof(int); /* cell information */
+    size += c->num_nlist * sizeof(int); /* node list of cells */
+    size += 3 * c->num_nodes * sizeof(float); /* node coordinates */
 
-    if (ucd->num_ndata > 0) {
+    if (c->num_ndata > 0) {
         size += 2 * 1024 * sizeof(char); /* labels and units */
-        size += sizeof(int) + ucd->num_ndata * sizeof(int); /* component size */
-        size += 2 * ucd->num_ndata * sizeof(float); /* minimum and maximum */
-        size += ucd->num_ndata * ucd->num_nodes * sizeof(float); /* data body */
-        size += ucd->num_ndata * sizeof(int); /* active list */
+        size += sizeof(int) + c->num_ndata * sizeof(int); /* component size */
+        size += 2 * c->num_ndata * sizeof(float); /* minimum and maximum */
+        size += c->num_ndata * c->num_nodes * sizeof(float); /* data body */
+        size += c->num_ndata * sizeof(int); /* active list */
     }
 
-    if (ucd->num_cdata > 0) {
+    if (c->num_cdata > 0) {
         size += 2 * 1024 * sizeof(char);
-        size += sizeof(int) + ucd->num_cdata * sizeof(int);
-        size += 2 * ucd->num_cdata * sizeof(float);
-        size += ucd->num_cdata * ucd->num_cells * sizeof(float);
-        size += ucd->num_cdata * sizeof(int);
+        size += sizeof(int) + c->num_cdata * sizeof(int);
+        size += 2 * c->num_cdata * sizeof(float);
+        size += c->num_cdata * c->num_cells * sizeof(float);
+        size += c->num_cdata * sizeof(int);
     }
 
     return size;
 }
 
 
-int ucd_close(ucd_context* ucd)
+void ucd_simple_free(ucd_content* ucd)
+{ 
+    free(ucd->node_id);
+    free(ucd->node_x);
+    free(ucd->node_y);
+    free(ucd->node_z);
+    free(ucd->cell_id);
+    free(ucd->cell_mat_id);
+    free(ucd->cell_type);
+    free(ucd->cell_nlist);
+
+    if (ucd->ndata != NULL) {
+        free(ucd->ndata->components);
+        free(ucd->ndata->minima);
+        free(ucd->ndata->maxima);
+        free(ucd->ndata->row_id);
+        free(ucd->ndata->data);
+        free(ucd->ndata);
+    }
+
+    if (ucd->cdata != NULL) {
+        free(ucd->cdata->components);
+        free(ucd->cdata->minima);
+        free(ucd->cdata->maxima);
+        free(ucd->cdata->row_id);
+        free(ucd->cdata->data);
+        free(ucd->cdata);
+    }
+}
+
+
+int ucd_close(ucd_context* c)
 {
-    return fclose(ucd->fp);
+    return fclose(c->_fp);
 }
