@@ -48,9 +48,9 @@ int ucd_simple_writer(const ucd_content* ucd, const char* filename, int is_binar
     for (i = 0; i < ucd->num_cells; ++i) {
         cells[4*i] = ucd->cell_id[i];
         cells[4*i+1] = ucd->cell_mat_id[i];
-        cells[4*i+2] = ucd->cell_type[i];
-        cells[4*i+3] = ucd_cell_nlist_size(ucd->cell_type[i]);
-        c.num_nlist += cells[4*i+3];
+        cells[4*i+2] = ucd_cell_nlist_size(ucd->cell_type[i]);
+        cells[4*i+3] = ucd->cell_type[i];
+        c.num_nlist += cells[4*i+2];
     }
     ucd_writer_open(&c, filename);
     ucd_write_nodes_and_cells(&c,
@@ -106,7 +106,9 @@ int ucd_write_nodes_and_cells(
 
     if (c->is_binary) {
         fwrite(cells, sizeof(int), 4 * c->num_cells, c->_fp);
-        fwrite(nlist, sizeof(int), c->num_nlist, c->_fp);
+        for (i = 0; i < c->num_cells; ++i) {
+            fwrite(&nlist[ld_nlist*i], sizeof(int), cells[4*i+2], c->_fp);
+        }
         fwrite(x, sizeof(float), c->num_nodes, c->_fp);
         fwrite(y, sizeof(float), c->num_nodes, c->_fp);
         fwrite(z, sizeof(float), c->num_nodes, c->_fp);
@@ -154,8 +156,8 @@ int ucd_write_data_header(ucd_context* c,
     }
 
     if (c->is_binary) {
-        memset(buffer, 0, sizeof(buffer));
-        for (i = 0, comp_count = 0; i < sizeof(buffer) && comp_count < num_comp; ++i) {
+        memset(buffer, '0', sizeof(buffer));
+        for (i = 0, comp_count = 0; i < sizeof(buffer) - 1 && comp_count < num_comp; ++i) {
             if (labels[i] == '\0') {
                 buffer[i] = '.';
                 ++comp_count;
@@ -163,11 +165,10 @@ int ucd_write_data_header(ucd_context* c,
                 buffer[i] = labels[i];
             }
         }
-        buffer[sizeof(buffer)-1] = '0';
         fwrite(buffer, sizeof(char), sizeof(buffer), c->_fp);
 
-        memset(buffer, 0, sizeof(buffer));
-        for (i = 0, comp_count = 0; i < sizeof(buffer) && comp_count < num_comp; ++i) {
+        memset(buffer, '0', sizeof(buffer));
+        for (i = 0, comp_count = 0; i < sizeof(buffer) - 1 && comp_count < num_comp; ++i) {
             if (units[i] == '\0') {
                 buffer[i] = '.';
                 ++comp_count;
@@ -175,7 +176,6 @@ int ucd_write_data_header(ucd_context* c,
                 buffer[i] = units[i];
             }
         }
-        buffer[sizeof(buffer)-1] = '0';
         fwrite(buffer, sizeof(char), sizeof(buffer), c->_fp);
 
         fwrite(&num_comp, sizeof(int), 1, c->_fp);
