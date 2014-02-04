@@ -1,5 +1,4 @@
 #include "ucd_private.h"
-#include <string.h>
 
 
 /*
@@ -95,7 +94,7 @@ int ucd_binary_filesize(ucd_context* c)
     size += 3 * c->num_nodes * sizeof(float); /* node coordinates */
 
     if (c->num_ndata > 0) {
-        size += 2 * 1024 * sizeof(char); /* labels and units */
+        size += 2 * UCD_TEXT_FIELD_SIZE * sizeof(char); /* labels and units */
         size += sizeof(int) + c->num_ndata * sizeof(int); /* component size */
         size += 2 * c->num_ndata * sizeof(float); /* minimum and maximum */
         size += c->num_ndata * c->num_nodes * sizeof(float); /* data body */
@@ -103,7 +102,7 @@ int ucd_binary_filesize(ucd_context* c)
     }
 
     if (c->num_cdata > 0) {
-        size += 2 * 1024 * sizeof(char);
+        size += 2 * UCD_TEXT_FIELD_SIZE * sizeof(char);
         size += sizeof(int) + c->num_cdata * sizeof(int);
         size += 2 * c->num_cdata * sizeof(float);
         size += c->num_cdata * c->num_cells * sizeof(float);

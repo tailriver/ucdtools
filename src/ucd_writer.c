@@ -1,8 +1,9 @@
 #include "ucd_private.h"
-#include <string.h>
+
+static const int zero = 0;
 
 
-void _ucd_simple_writer_sub(ucd_context* c, const ucd_data* d)
+static void _ucd_simple_writer_sub(ucd_context* c, const ucd_data* d)
 {
     int i, j, k, base_col;
     float* buffer;
@@ -70,7 +71,6 @@ int ucd_simple_writer(const ucd_content* ucd, const char* filename, int is_binar
 int ucd_writer_open(ucd_context* c, const char* filename)
 {
     const char magic_number = UCD_MAGIC_NUMBER;
-    const int zero = 0;
 
     c->_fp = fopen(filename, c->is_binary ? "wb" : "w");
     if (c->_fp == NULL) {
@@ -138,10 +138,8 @@ int ucd_write_nodes_and_cells(
 int ucd_write_data_header(ucd_context* c,
         int num_comp, const int* components, const char* labels, const char* units)
 {
-    const int zero = 0;
-
     int num_data, comp_count, i;
-    char buffer[1024];
+    char buffer[UCD_TEXT_FIELD_SIZE];
     const char *anchor_l, *anchor_u;
 
     if (c->_nc == 0 && c->num_ndata > 0) {
@@ -268,13 +266,15 @@ int ucd_write_data_binary(ucd_context* c,
 
 int ucd_write_data_active_list(ucd_context* c, const int* active_list)
 {
-    const int zero = 0;
-
     int i;
     int num_data = c->_nc == 1 ? c->num_ndata : c->num_cdata;
 
-    for (i = 0; i < num_data; ++i) {
-        fwrite(&zero, sizeof(int), 1, c->_fp);
+    if (active_list != NULL) {
+        fwrite(&active_list, sizeof(int), num_data, c->_fp);
+    } else {
+        for (i = 0; i < num_data; ++i) {
+            fwrite(&zero, sizeof(int), 1, c->_fp);
+        }
     }
 
     return ferror(c->_fp);

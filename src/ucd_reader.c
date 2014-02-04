@@ -1,5 +1,4 @@
 #include <float.h>
-#include <string.h>
 #include "ucd_private.h"
 
 #ifdef _WIN32
@@ -7,14 +6,14 @@
 #endif
 
 
-void _ucd_ignore_lines(ucd_context* c, int count) {
+static void _ucd_ignore_lines(ucd_context* c, int count) {
     while (count-- > 0) {
         while (getc(c->_fp) != '\n');
     }
 }
 
 
-void _ucd_simple_reader_sub(ucd_context* c, ucd_data* d)
+static void _ucd_simple_reader_sub(ucd_context* c, ucd_data* d)
 {
     int i, j, k, base_col;
     float* buffer;
@@ -257,8 +256,6 @@ int ucd_read_nodes_and_cells(ucd_context* c,
 int ucd_read_data_header(ucd_context* c,
         int* num_comp, int* components, char* labels, char* units)
 {
-    const int text_field_size = 1024;
-
     int num_data, i;
     char *anchor_l, *anchor_u;
 
@@ -275,25 +272,25 @@ int ucd_read_data_header(ucd_context* c,
 
     if (c->is_binary) {
         if (labels != NULL) {
-            fread(labels, sizeof(char), text_field_size, c->_fp);
-            for (i = 0; i < text_field_size; ++i) {
+            fread(labels, sizeof(char), UCD_TEXT_FIELD_SIZE, c->_fp);
+            for (i = 0; i < UCD_TEXT_FIELD_SIZE; ++i) {
                 if (labels[i] == '.') {
                     labels[i] = '\0';
                 }
             }
         } else {
-            fseek(c->_fp, text_field_size, SEEK_CUR);
+            fseek(c->_fp, UCD_TEXT_FIELD_SIZE, SEEK_CUR);
         }
 
         if (units != NULL) {
-            fread(units, sizeof(char), text_field_size, c->_fp);
-            for (i = 0; i < text_field_size; ++i) {
+            fread(units, sizeof(char), UCD_TEXT_FIELD_SIZE, c->_fp);
+            for (i = 0; i < UCD_TEXT_FIELD_SIZE; ++i) {
                 if (units[i] == '.') {
                     units[i] = '\0';
                 }
             }
         } else {
-            fseek(c->_fp, text_field_size, SEEK_CUR);
+            fseek(c->_fp, UCD_TEXT_FIELD_SIZE, SEEK_CUR);
         }
 
         fread(num_comp, sizeof(int), 1, c->_fp);
