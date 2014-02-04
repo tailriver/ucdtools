@@ -1,4 +1,5 @@
 autom4te.cache/
+build/
 src/.deps/
 Makefile
 config.h
@@ -6,4 +7,7 @@ config.log
 config.status
 stamp-h1
 *.a
+*.exe
+*.lib
 *.o
+*.obj

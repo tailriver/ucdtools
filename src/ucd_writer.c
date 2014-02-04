@@ -138,7 +138,7 @@ int ucd_write_data_header(ucd_context* c,
 {
     const int zero = 0;
 
-    int num_data, i;
+    int num_data, comp_count, i;
     char buffer[1024];
     const char *anchor_l, *anchor_u;
 
@@ -154,14 +154,26 @@ int ucd_write_data_header(ucd_context* c,
     }
 
     if (c->is_binary) {
-        for (i = 0; i < sizeof(buffer); ++i) {
-            buffer[i] = labels[i] == '\0' ? '.' : labels[i];
+        memset(buffer, 0, sizeof(buffer));
+        for (i = 0, comp_count = 0; i < sizeof(buffer) && comp_count < num_comp; ++i) {
+            if (labels[i] == '\0') {
+                buffer[i] = '.';
+                ++comp_count;
+            } else {
+                buffer[i] = labels[i];
+            }
         }
         buffer[sizeof(buffer)-1] = '0';
         fwrite(buffer, sizeof(char), sizeof(buffer), c->_fp);
 
-        for (i = 0; i < sizeof(buffer); ++i) {
-            buffer[i] = units[i] == '\0' ? '.' : units[i];
+        memset(buffer, 0, sizeof(buffer));
+        for (i = 0, comp_count = 0; i < sizeof(buffer) && comp_count < num_comp; ++i) {
+            if (units[i] == '\0') {
+                buffer[i] = '.';
+                ++comp_count;
+            } else {
+                buffer[i] = units[i];
+            }
         }
         buffer[sizeof(buffer)-1] = '0';
         fwrite(buffer, sizeof(char), sizeof(buffer), c->_fp);

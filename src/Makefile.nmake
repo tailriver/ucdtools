@@ -1,0 +1,16 @@
+CFLAGS = $(CFLAGS) /nologo /O2
+
+all: ucd.lib ucdconv.exe
+
+ucd.lib: ucd.obj ucd_reader.obj ucd_writer.obj
+	lib /nologo /OUT:$@ $**
+
+ucdconv.exe: ucdconv.obj ucd.lib
+	link /nologo /OUT:$@ $**
+
+ucd.obj ucd_reader.obj ucd_writer.obj: ucd_private.h ucd.h
+
+ucdconv.obj: ucd.obj
+
+clean:
+	del *.obj *.lib *.exe 2>NUL
