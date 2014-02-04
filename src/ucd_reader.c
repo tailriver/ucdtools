@@ -199,7 +199,7 @@ int ucd_read_nodes_and_cells(ucd_context* c,
         int* cells, int* nlist, int ld_nlist)
 {
     int i, j;
-    char cell_type[8];
+    char cell_type[6]; /* 'prism' + null character */
 
     if (c->is_binary) {
         if (cells != NULL) {
@@ -228,13 +228,14 @@ int ucd_read_nodes_and_cells(ucd_context* c,
         if (node_id != NULL && x != NULL && y != NULL && z != NULL) {
             for (i = 0; i < c->num_nodes; ++i) {
                 fscanf(c->_fp, "%d %f %f %f", &node_id[i], &x[i], &y[i], &z[i]);
+                _ucd_ignore_lines(c, 1);
             }
         } else {
             _ucd_ignore_lines(c, c->num_nodes);
         }
         if (cells != NULL) {
             for (i = 0; i < c->num_cells; ++i) {
-                fscanf(c->_fp, "%d %d %s",
+                fscanf(c->_fp, "%d %d %5s",
                         &cells[4 * i], &cells[4 * i + 1], cell_type);
                 cells[4 * i + 2] = ucd_cell_type_number(cell_type);
                 cells[4 * i + 3] = ucd_cell_nlist_size(cells[4 * i + 2]);
@@ -242,9 +243,8 @@ int ucd_read_nodes_and_cells(ucd_context* c,
                     for (j = 0; j < cells[4 * i + 3]; ++j) {
                         fscanf(c->_fp, "%d", &nlist[ld_nlist * i + j]);
                     }
-                } else {
-                    _ucd_ignore_lines(c, 1);
                 }
+                _ucd_ignore_lines(c, 1);
             }
         } else {
             _ucd_ignore_lines(c, c->num_cells);
@@ -315,7 +315,7 @@ int ucd_read_data_header(ucd_context* c,
             anchor_l = labels;
             anchor_u = units;
             for (i = 0; i < *num_comp; ++i) {
-                fscanf(c->_fp, "%[^,],%s", anchor_l, anchor_u);
+                fscanf(c->_fp, "%1023[^,],%1023s", anchor_l, anchor_u);
                 anchor_l[strlen(anchor_l)] = '\0';
                 anchor_u[strlen(anchor_u)] = '\0';
                 anchor_l += strlen(anchor_l) + 1;
