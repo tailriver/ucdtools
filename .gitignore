@@ -1,5 +1,6 @@
 autom4te.cache/
 build/
+html/
 src/.deps/
 Makefile
 config.h
@@ -11,3 +12,4 @@ stamp-h1
 *.lib
 *.o
 *.obj
+*.swp

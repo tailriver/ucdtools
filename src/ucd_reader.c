@@ -1,3 +1,10 @@
+/**
+ * @file ucd_reader.c
+ * @brief Functions relate to reading a UCD file.
+ * @author Shinsuke Ogawa
+ * @date 2014
+ */
+
 #include <float.h>
 #include "ucd_private.h"
 
@@ -16,7 +23,6 @@ static void _ucd_ignore_lines(ucd_context* c, int count) {
 static void _ucd_simple_reader_sub(ucd_context* c, ucd_data* d)
 {
     int i, j, k, base_col;
-    float* buffer;
 
     d->components = malloc(d->num_data * sizeof(*d->components));
     d->minima = malloc(d->num_data * sizeof(*d->maxima));
@@ -35,14 +41,8 @@ static void _ucd_simple_reader_sub(ucd_context* c, ucd_data* d)
 
         base_col = 0;
         for (i = 0; i < d->num_comp; ++i) {
-            buffer = malloc(d->components[i] * d->num_rows * sizeof(*buffer));
-            ucd_read_data_binary(c, d->components[i], buffer);
-            for (j = 0; j < d->num_rows; ++j) {
-                for (k = 0; k < d->components[i]; ++k) {
-                    d->data[d->num_data * j + base_col + k] = buffer[d->components[i] * j + k];
-                }
-            }
-            free(buffer);
+            ucd_read_data_binary(c,
+                    d->components[i], &d->data[base_col], d->num_data);
             base_col += d->components[i];
         }
         ucd_read_data_active_list(c, NULL);
@@ -101,9 +101,9 @@ int ucd_simple_reader(ucd_content* ucd, const char* filename, int* was_binary)
     for (i = 0; i < c.num_cells; ++i) {
         ucd->cell_id[i] = int_buffer1[4*i];
         ucd->cell_mat_id[i] = int_buffer1[4*i+1];
-        ucd->cell_type[i] = int_buffer1[4*i+2];
+        ucd->cell_type[i] = int_buffer1[4*i+3];
         if (c.is_binary) {
-            for (j = 0; j < int_buffer1[4*i+3]; ++j) {
+            for (j = 0; j < int_buffer1[4*i+2]; ++j) {
                 ucd->cell_nlist[ucd->ld_nlist * i + j] = int_buffer2[k++];
             }
         }
@@ -177,7 +177,7 @@ int ucd_reader_open(ucd_context* c, const char* filename)
 
         c->_fp = fopen(filename, "r");
         if (c->_fp == NULL) {
-            fprintf(stderr, "%s cannot open %s\n", __func__, filename);
+            fprintf(stderr, "%s: cannot open %s\n", __func__, filename);
             return EXIT_FAILURE;
         }
 
@@ -236,10 +236,10 @@ int ucd_read_nodes_and_cells(ucd_context* c,
             for (i = 0; i < c->num_cells; ++i) {
                 fscanf(c->_fp, "%d %d %5s",
                         &cells[4 * i], &cells[4 * i + 1], cell_type);
-                cells[4 * i + 2] = ucd_cell_type_number(cell_type);
-                cells[4 * i + 3] = ucd_cell_nlist_size(cells[4 * i + 2]);
+                cells[4 * i + 3] = ucd_cell_type_number(cell_type);
+                cells[4 * i + 2] = ucd_cell_nlist_size(cells[4 * i + 3]);
                 if (nlist != NULL) {
-                    for (j = 0; j < cells[4 * i + 3]; ++j) {
+                    for (j = 0; j < cells[4 * i + 2]; ++j) {
                         fscanf(c->_fp, "%d", &nlist[ld_nlist * i + j]);
                     }
                 }
@@ -261,14 +261,14 @@ int ucd_read_data_header(ucd_context* c,
 
     if (c->_nc == 0 && c->num_ndata > 0) {
         c->_nc = 1;
-        num_data = c->num_ndata;
     } else if (c->_nc == 1 || c->num_cdata > 0) {
         c->_nc = 2;
-        num_data = c->num_cdata;
     } else {
         fprintf(stderr, "%s: wrong call\n", __func__);
         return EXIT_FAILURE;
     }
+
+    ucd_data_dimension(c, NULL, &num_data);
 
     if (c->is_binary) {
         if (labels != NULL) {
@@ -330,12 +330,14 @@ int ucd_read_data_header(ucd_context* c,
 
 int ucd_read_data_minmax(ucd_context* c, float* minima, float* maxima)
 {
-    int num_data = c->_nc == 1 ? c->num_ndata : c->num_cdata;
+    int num_data;
 
     if (!c->is_binary) {
-        fprintf(stderr, "%s: there are no such fields in ascii format\n", __func__);
+        fprintf(stderr, "%s: assertion error\n", __func__);
         return EXIT_FAILURE;
     }
+
+    ucd_data_dimension(c, NULL, &num_data);
 
     if (minima != NULL) {
         fread(minima, sizeof(float), num_data, c->_fp);
@@ -353,14 +355,14 @@ int ucd_read_data_minmax(ucd_context* c, float* minima, float* maxima)
 
 int ucd_read_data_ascii(ucd_context* c, int* ids, float* data)
 {
-    int i, j;
-    int num_rows = c->_nc == 1 ? c->num_nodes : c->num_cells;
-    int num_data = c->_nc == 1 ? c->num_ndata : c->num_cdata;
+    int num_rows, num_data, i, j;
 
     if (c->is_binary) {
-        fprintf(stderr, "%s: it is binary format\n", __func__);
+        fprintf(stderr, "%s: assertion error\n", __func__);
         return EXIT_FAILURE;
     }
+
+    ucd_data_dimension(c, &num_rows, &num_data);
 
     if (ids != NULL && data != NULL) {
         for (i = 0; i < num_rows; ++i) {
@@ -377,17 +379,22 @@ int ucd_read_data_ascii(ucd_context* c, int* ids, float* data)
 }
 
 
-int ucd_read_data_binary(ucd_context* c, int component_size, float* data)
+int ucd_read_data_binary(ucd_context* c,
+        int component_size, float* data, int ld_data)
 {
-    int num_rows = c->_nc == 1 ? c->num_nodes : c->num_cells;
+    int num_rows, i;
 
     if (!c->is_binary) {
-        fprintf(stderr, "%s: it is ascii format\n", __func__);
+        fprintf(stderr, "%s: assertion error\n", __func__);
         return EXIT_FAILURE;
     }
 
+    ucd_data_dimension(c, &num_rows, NULL);
+
     if (data != NULL) {
-        fread(data, sizeof(float), component_size * num_rows, c->_fp);
+        for (i = 0; i < num_rows; ++i) {
+            fread(&data[ld_data*i], sizeof(float), component_size, c->_fp);
+        }
     } else {
         fseek(c->_fp, component_size * num_rows * sizeof(float), SEEK_CUR);
     }
@@ -397,12 +404,14 @@ int ucd_read_data_binary(ucd_context* c, int component_size, float* data)
 
 int ucd_read_data_active_list(ucd_context* c, int* active_list)
 {
-    int num_data = c->_nc == 1 ? c->num_ndata : c->num_cdata;
+    int num_data;
 
     if (!c->is_binary) {
-        fprintf(stderr, "%s: it is ascii format\n", __func__);
+        fprintf(stderr, "%s: assertion error\n", __func__);
         return EXIT_FAILURE;
     }
+
+    ucd_data_dimension(c, NULL, &num_data);
 
     if (active_list != NULL) {
         fread(active_list, sizeof(int), num_data, c->_fp);

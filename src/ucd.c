@@ -1,3 +1,10 @@
+/**
+ * @file ucd.c
+ * @brief Utility functions.
+ * @author Shinsuke Ogawa
+ * @date 2014
+ */
+
 #include "ucd_private.h"
 
 
@@ -114,7 +121,7 @@ int ucd_binary_filesize(ucd_context* c)
 
 
 void ucd_simple_free(ucd_content* ucd)
-{ 
+{
     free(ucd->node_id);
     free(ucd->node_x);
     free(ucd->node_y);

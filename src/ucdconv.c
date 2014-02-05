@@ -1,3 +1,10 @@
+/**
+ * @file ucdconv.c
+ * @brief An example application to convert UCD file formats.
+ * @author Shinsuke Ogawa
+ * @date 2014
+ */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -9,6 +16,12 @@
  * a -> a : ascii to ascii (to shrink size)
  */
 
+/**
+ * An example application to convert UCD file formats.
+ * @param argc
+ * @param argv
+ * @return an exit code.
+ */
 int main(int argc, char** argv) {
     ucd_content ucd;
     int is_binary_input, keep_format, has_error, i;

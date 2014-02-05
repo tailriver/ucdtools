@@ -1,3 +1,10 @@
+/**
+ * @file ucd_writer.c
+ * @brief Functions relate to writing a UCD file.
+ * @author Shinsuke Ogawa
+ * @date 2014
+ */
+
 #include "ucd_private.h"
 
 static const int zero = 0;
@@ -5,25 +12,19 @@ static const int zero = 0;
 
 static void _ucd_simple_writer_sub(ucd_context* c, const ucd_data* d)
 {
-    int i, j, k, base_col;
-    float* buffer;
+    int base_col, i;
 
     if (d == NULL)
         return;
 
-    ucd_write_data_header(c, d->num_comp, d->components, d->labels, d->units);
+    ucd_write_data_header(c,
+            d->num_comp, d->components, d->labels, d->units);
     if (c->is_binary) {
         ucd_write_data_minmax(c, d->minima, d->maxima);
         base_col = 0;
         for (i = 0; i < d->num_comp; ++i) {
-            buffer = malloc(d->components[i] * d->num_rows * sizeof(*buffer));
-            for (j = 0; j < d->num_rows; ++j) {
-                for (k = 0; k < d->components[i]; ++k) {
-                    buffer[d->components[i] * j + k] = d->data[d->num_data * j + base_col + k];
-                }
-            }
-            ucd_write_data_binary(c, d->components[i], buffer, 0);
-            free(buffer);
+            ucd_write_data_binary(c,
+                    d->components[i], &d->data[base_col], d->num_data);
             base_col += d->components[i];
         }
         ucd_write_data_active_list(c, NULL);
@@ -144,14 +145,14 @@ int ucd_write_data_header(ucd_context* c,
 
     if (c->_nc == 0 && c->num_ndata > 0) {
         c->_nc = 1;
-        num_data = c->num_ndata;
     } else if (c->_nc == 1 || c->num_cdata > 0) {
         c->_nc = 2;
-        num_data = c->num_cdata;
     } else {
         fprintf(stderr, "%s: wrong call\n", __func__);
         return EXIT_FAILURE;
     }
+
+    ucd_data_dimension(c, NULL, &num_data);
 
     if (c->is_binary) {
         memset(buffer, '0', sizeof(buffer));
@@ -202,7 +203,14 @@ int ucd_write_data_header(ucd_context* c,
 
 int ucd_write_data_minmax(ucd_context* c, const float* minima, const float* maxima)
 {
-    int num_data = c->_nc == 1 ? c->num_ndata : c->num_cdata;
+    int num_data;
+
+    if (!c->is_binary) {
+        fprintf(stderr, "%s: assertion error\n", __func__);
+        return EXIT_FAILURE;
+    }
+
+    ucd_data_dimension(c, NULL, &num_data);
 
     fwrite(minima, sizeof(float), num_data, c->_fp);
     fwrite(maxima, sizeof(float), num_data, c->_fp);
@@ -213,8 +221,14 @@ int ucd_write_data_minmax(ucd_context* c, const float* minima, const float* maxi
 
 int ucd_write_data_ascii_1(ucd_context* c, int id, const float* data)
 {
-    int i;
-    int num_data = c->_nc == 1 ? c->num_ndata : c->num_cdata;
+    int num_data, i;
+
+    if (c->is_binary) {
+        fprintf(stderr, "%s: assertion error\n", __func__);
+        return EXIT_FAILURE;
+    }
+
+    ucd_data_dimension(c, NULL, &num_data);
 
     fprintf(c->_fp, "%d", id);
     for (i = 0; i < num_data; ++i) {
@@ -228,9 +242,14 @@ int ucd_write_data_ascii_1(ucd_context* c, int id, const float* data)
 
 int ucd_write_data_ascii_n(ucd_context* c, const int* ids, const float* data)
 {
-    int i, j;
-    int num_rows = c->_nc == 1 ? c->num_nodes : c->num_cells;
-    int num_data = c->_nc == 1 ? c->num_ndata : c->num_cdata;
+    int num_rows, num_data, i, j;
+
+    if (c->is_binary) {
+        fprintf(stderr, "%s: assertion error\n", __func__);
+        return EXIT_FAILURE;
+    }
+
+    ucd_data_dimension(c, &num_rows, &num_data);
 
     for (i = 0; i < num_rows; ++i) {
         fprintf(c->_fp, "%d", ids[i]);
@@ -245,19 +264,19 @@ int ucd_write_data_ascii_n(ucd_context* c, const int* ids, const float* data)
 
 
 int ucd_write_data_binary(ucd_context* c,
-        int component_size, const float* data, int need_transpose)
+        int component_size, const float* data, int ld_data)
 {
-    int i, j;
-    int num_rows = c->_nc == 1 ? c->num_nodes : c->num_cells;
+    int num_rows, i;
 
-    if (!need_transpose) {
-        fwrite(data, sizeof(float), component_size * num_rows, c->_fp);
-    } else {
-        for (i = 0; i < num_rows; ++i) {
-            for (j = 0; j < component_size; ++j) {
-                fwrite(&data[num_rows*j+i], sizeof(float), 1, c->_fp);
-            }
-        }
+    if (!c->is_binary) {
+        fprintf(stderr, "%s: assertion error\n", __func__);
+        return EXIT_FAILURE;
+    }
+
+    ucd_data_dimension(c, &num_rows, NULL);
+
+    for (i = 0; i < num_rows; ++i) {
+        fwrite(&data[ld_data*i], sizeof(float), component_size, c->_fp);
     }
 
     return ferror(c->_fp);
@@ -266,8 +285,14 @@ int ucd_write_data_binary(ucd_context* c,
 
 int ucd_write_data_active_list(ucd_context* c, const int* active_list)
 {
-    int i;
-    int num_data = c->_nc == 1 ? c->num_ndata : c->num_cdata;
+    int num_data, i;
+
+    if (!c->is_binary) {
+        fprintf(stderr, "%s: assertion error\n", __func__);
+        return EXIT_FAILURE;
+    }
+
+    ucd_data_dimension(c, NULL, &num_data);
 
     if (active_list != NULL) {
         fwrite(&active_list, sizeof(int), num_data, c->_fp);
